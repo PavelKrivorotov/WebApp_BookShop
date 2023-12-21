@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     'author.apps.AuthorConfig',
     'book.apps.BookConfig',
     'category.apps.CategoryConfig',
-    'mail.apps.MailConfig',
 ]
 
 MIDDLEWARE = [
