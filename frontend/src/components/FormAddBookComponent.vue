@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, toRef, computed, watch, onMounted } from 'vue';
+import { ref, reactive, toRefs, watch, onMounted } from 'vue';
 import { useForm, useField } from 'vee-validate';
 
 import {
@@ -101,48 +101,14 @@ const emits = defineEmits([
     'resetForm',
 ]);
 
-
 // Not worked! Why??? ---- WORKED!!!! REACTIVE ALL `props`!!!
-// const values = toRefs(props);
-
-// Worked!
-// const _initialValues = toRef(props, 'initialValues')
-
-
-// Worked!
-const _schema = computed(() => props.schema);
-const _initialValues = computed(() => props.initialValues);
-
 // 
-const _form = computed(() => props.form);
-const _exclude = computed(() => props.exclude);
+const propsRef = toRefs(props);
+// 
+// 
 
-const validationSchemaGen = computed(() => {
-    const schema = {};
-    _schema.value.forEach(element => {
-        if (_exclude.value.indexOf(element.name) == -1) {
-            schema[element.name] = element.validationRules;
-        }
-    });
-
-    return schema;
-});
-
-const initialValuesGen = computed(() => {
-    const values = {};
-    Object.keys(_initialValues.value).forEach(key => {
-        if (_exclude.value.indexOf(key) == -1) {
-            values[key] = _initialValues.value[key];
-        }
-    });
-
-    // console.log(values)
-    return values;
-});
-
-const { handleSubmit, handleReset, setFieldError } = useForm({
-    validationSchema: validationSchemaGen,
-    initialValues: initialValuesGen,
+const { handleSubmit, handleReset, setFieldError, setValues } = useForm({
+    validationSchema: makeValidShema(),
 });
 
 const submit = handleSubmit(async (values) => {
@@ -150,20 +116,20 @@ const submit = handleSubmit(async (values) => {
     emits('beforeRequest', formData);
 
     try {
-        switch (_form.value.type) {
+        switch (propsRef.form.value.type) {
             case 'add':
                 await addBook(formData);
                 break;
 
             case 'update':
-                await setBook(_initialValues.value.isbn, formData);
+                await setBook(propsRef.initialValues.value.isbn, formData);
                 break;
 
             default:
                 break;
         }
 
-        const isbn = values.isbn || _initialValues.value.isbn;
+        const isbn = values.isbn || propsRef.initialValues.value.isbn;
         emits('afterResponse', true, isbn);
     }
     catch (error) {
@@ -175,13 +141,25 @@ const submit = handleSubmit(async (values) => {
 
 function reset() {
     handleReset();
+    setValues(propsRef.initialValues.value);
     emits('resetForm');
+}
+
+function makeValidShema() {
+    const schema = {};
+    propsRef.schema.value.forEach(element => {
+        if (propsRef.exclude.value.indexOf(element.name) == -1) {
+            schema[element.name] = element.validationRules;
+        }
+    });
+
+    return schema;
 }
 
 function makeFormData(values) {
     const formData = new FormData();
 
-    switch (_form.value.type) {
+    switch (propsRef.form.value.type) {
         case 'add':
             formData.append('isbn', values.isbn);
             formData.append('title', values.title);
@@ -199,29 +177,29 @@ function makeFormData(values) {
             break;
 
         case 'update':
-            values.title != _initialValues.value.title ?
+            values.title != propsRef.initialValues.value.title ?
                 formData.append('title', values.title)
                 :
                 null;
 
-            values.page != _initialValues.value.page ?
+            values.page != propsRef.initialValues.value.page ?
                 formData.append('page', values.page)
                 :
                 null;
 
-            values.state != _initialValues.value.state ?
+            values.state != propsRef.initialValues.value.state ?
                 formData.append('state', values.state)
                 :
                 null;
 
-            JSON.stringify(values.author.sort()) != JSON.stringify(_initialValues.value.author.sort()) ?
+            JSON.stringify(values.author.sort()) != JSON.stringify(propsRef.initialValues.value.author.sort()) ?
                 values.author.forEach(element => {
                     formData.append('author', element);
                 })
                 :
                 null;
 
-            JSON.stringify(values.category.sort()) != JSON.stringify(_initialValues.value.category.sort()) ?
+            JSON.stringify(values.category.sort()) != JSON.stringify(propsRef.initialValues.value.category.sort()) ?
                 values.category.forEach(element => {
                     formData.append('category', element);
                 })
@@ -242,14 +220,24 @@ function makeFormData(values) {
 }
 
 function checkState(name, type, state) {
-    if (_exclude.value.indexOf(name) == -1 && type == state) {
+    if (propsRef.exclude.value.indexOf(name) == -1 && type == state) {
         return true
     }
     return false;
 }
 
+watch(
+    () => propsRef.initialValues.value,
+    () => {
+        console.log('\n\nwatcher in FromAddBookComponent worked!\n');
+        setValues(propsRef.initialValues.value);
+    },
+    {immediate: true, deep: true}
+);
+
 onMounted(() => {
     console.log('onMounted `FormAddBookComponent!`')
+    console.log('\n\npropsRef (in Mounted): ', propsRef.initialValues.value);
 });
 </script>
 
@@ -269,7 +257,7 @@ onMounted(() => {
                 :name="field.name"
                 :label=field.label
 
-                :readonly="_form.readonly"
+                :readonly="propsRef.form.value.readonly"
                 ></TextComponent>
 
                 <SelectComponent
@@ -279,7 +267,7 @@ onMounted(() => {
                 :func-request="field.funcRequest"
                 :multiple="field.multiple"
 
-                :readonly="_form.readonly"
+                :readonly="propsRef.form.value.readonly"
                 ></SelectComponent>
 
                 <FileComponent
@@ -287,18 +275,30 @@ onMounted(() => {
                 :name="field.name"
                 :label="field.label"
 
-                :readonly="_form.readonly"
-                :clearable="!_form.readonly"
+                :readonly="propsRef.form.value.readonly"
+                :clearable="!propsRef.form.value.readonly"
                 ></FileComponent>
             </template>
 
             <div
-            v-if="!_form.readonly"
             class="d-flex justify-end pt-2"
             >
-                <v-btn type="reset" color="error">Reset</v-btn>
-                <v-btn type="submit" color="success">Submit</v-btn>
-            </div>
+                <v-btn
+                type="reset"
+                color="error"
+                :disabled="propsRef.form.value.readonly"
+                >
+                    Cancel
+                </v-btn>
+
+                <v-btn
+                type="submit"
+                color="success"
+                :disabled="propsRef.form.value.readonly"
+                >
+                    Ok
+                </v-btn>
+        </div>
         </v-form>
     </v-card>
 </template>
