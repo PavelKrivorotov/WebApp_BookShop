@@ -39,7 +39,10 @@ SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env('DJANGO_DEBUG')
 
 ALLOWED_HOSTS = [
+    # Need for local run
     '127.0.0.1',
+
+    # Need for docker run
     'backend',
 ]
 
@@ -154,9 +157,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'images/')
-
 MEDIA_URL = 'images/download/'
 
 
@@ -170,8 +171,11 @@ REST_FRAMEWORK = {
 
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Worked!!
-   #'http://127.0.0.1:5173',  # Not Worked!!!
+    # Need for local start
+    'http://localhost:5173',    # `http://127.0.0.1:5173` NOT worked because NOT equal!
+                                
+    # Need for docker
+    'http://127.0.0.1',         # Port [:80]!
 ]
 
 # APPEND_SLASH = True
