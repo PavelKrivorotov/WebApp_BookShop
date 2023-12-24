@@ -1,0 +1,44 @@
+version: 'v2.12.2'
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - 127.0.0.1:80:80
+      - 127.0.0.1:8000:8000
+    depends_on:
+      backend:
+        condition: service_started
+
+  backend:
+    build: ./backend
+    container_name: backend
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:13
+    container_name: database
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "task_02_08_2023"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # mitmweb:
+  #   image: mitmproxy/mitmproxy:dev
+  #   container_name: mitmweb
+  #   tty: true
+  #   ports:
+  #     - 5050:8080
+  #     - 5051:8081
+  #   command: mitmweb --web-host 0.0.0.0 --mode reverse:http://backend:8000/
+  #   depends_on:
+  #     - nginx
